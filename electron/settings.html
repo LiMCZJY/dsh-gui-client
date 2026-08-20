@@ -142,7 +142,7 @@
     </div>
 
     <div class="footer">
-      <button id="closeBtn">关闭</button>
+      <button id="openAppBtn">返回应用</button>
       <button class="primary" id="saveBtn">保存设置</button>
     </div>
   </div>
@@ -164,6 +164,11 @@
       function invoke(channel, ...args) { return api.invoke ? api.invoke(channel, ...args) : Promise.reject(new Error('no invoke')); }
 
       async function init() {
+        // 主动查询最近一次启动失败信息（比事件监听更可靠，避免时序丢消息）
+        try {
+          const err = await invoke('app-get-start-error');
+          if (err) { showMsg(svcMsg, '启动失败：' + err, 'err'); }
+        } catch (e) {}
         try {
           const cfg = api.gui && api.gui.getConfig ? await api.gui.getConfig() : {};
           if (cfg.dshPath) dshPathEl.value = cfg.dshPath;
@@ -204,8 +209,13 @@
         showMsg(svcMsg, '正在启动服务…', 'info');
         try {
           const res = await invoke('dsh-start-web');
-          if (res && res.ok) showMsg(svcMsg, res.alreadyRunning ? '服务已在运行。' : '服务启动成功。', 'ok');
-          else showMsg(svcMsg, (res && res.message) || '启动失败。', 'err');
+          if (res && res.ok) {
+            showMsg(svcMsg, res.alreadyRunning ? '服务已在运行。' : '服务启动成功，正在进入应用…', 'ok');
+            // 启动成功后自动返回应用页
+            try { await invoke('app-open-app'); } catch (e) {}
+          } else {
+            showMsg(svcMsg, (res && res.message) || '启动失败。', 'err');
+          }
         } catch (e) { showMsg(svcMsg, '启动失败：' + e.message, 'err'); }
         refreshStatus();
       });
@@ -236,7 +246,9 @@
         } catch (e) { showMsg(pathMsg, '保存失败：' + e.message, 'err'); }
       });
 
-      $('closeBtn').addEventListener('click', () => window.close());
+      $('openAppBtn').addEventListener('click', async () => {
+        try { await invoke('app-open-app'); } catch (e) {}
+      });
       init();
     })();
   </script>
