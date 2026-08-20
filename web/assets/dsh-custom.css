@@ -1,0 +1,100 @@
+/* dsh-custom.css — 桌面扩展浮层样式（first-party，随 dist 一起托管） */
+
+#dsh-extras-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #fff;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  z-index: 2147483647;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.3s;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#dsh-extras-ask {
+  position: fixed;
+  z-index: 2147483647;
+  padding: 6px 12px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  display: none;
+  user-select: none;
+}
+#dsh-extras-ask:hover { background: #1d4ed8; }
+
+#dsh-extras-palette {
+  position: fixed;
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  max-width: 90vw;
+  background: #1f2937;
+  color: #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 2147483646;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+  display: none;
+}
+#dsh-extras-palette .head {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #9ca3af;
+  border-bottom: 1px solid #374151;
+}
+#dsh-extras-palette input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+  font-family: inherit;
+}
+#dsh-extras-palette .list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+#dsh-extras-palette [data-cmd] {
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2px solid transparent;
+}
+#dsh-extras-palette [data-cmd]:hover { background: rgba(37, 99, 235, 0.25); }
+#dsh-extras-palette [data-cmd].active {
+  background: rgba(37, 99, 235, 0.3);
+  border-left-color: #2563eb;
+}
+#dsh-extras-palette .group {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+#dsh-extras-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 2147483645;
+  display: none;
+}
