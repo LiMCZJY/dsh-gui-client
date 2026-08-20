@@ -16,13 +16,14 @@ const os = require('os');
 const DSHBridge = require('./dsh-bridge');
 const { setupIPCHandlers, cleanup: cleanupIPCHandlers } = require('./ipc-handlers');
 
-const WEB_PORT = 3080;
+const WEB_PORT = 3080;        // dsh web 后端（前端 + /api + WS 都在这里）
 const WEB_BASE = `http://127.0.0.1:${WEB_PORT}`;
 const HOTKEY = 'CommandOrControl+Shift+Space';
+const CUSTOM_JS_PATH = path.join(__dirname, '..', 'web', 'assets', 'dsh-custom.js');
+const CUSTOM_CSS_PATH = path.join(__dirname, '..', 'web', 'assets', 'dsh-custom.css');
 
 // 全局引用
 let mainWindow = null;
-let settingsWindow = null;
 let dshBridge = new DSHBridge();
 let tray = null;
 let forceQuit = false;
@@ -30,6 +31,8 @@ let minimizeToTray = false;
 let alwaysOnTop = false;
 let starting = false;
 let boundsSaveTimer = null;
+let customPayload = { js: '', css: '' }; // 预读的 first-party 注入负载
+let lastStartError = ''; // 最近一次服务启动失败信息（供设置页查询显示）
 
 // ---- 单实例锁 ----
 if (!app.requestSingleInstanceLock()) {
@@ -61,6 +64,8 @@ async function createWindow() {
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('resize', scheduleSaveBounds);
   mainWindow.on('move', scheduleSaveBounds);
+  // 每次页面加载完成，把 first-party 扩展注入到 3080 页面里（同源，稳）
+  mainWindow.webContents.on('did-finish-load', () => injectExtras(mainWindow));
 
   mainWindow.on('close', (event) => {
     if (!forceQuit && minimizeToTray) {
@@ -71,31 +76,23 @@ async function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// ===== 设置窗口 =====
+// ===== 设置页 / 应用页切换（主窗口统一：设置页与网页端共用同一窗口） =====
 function openSettings() {
-  if (settingsWindow && !settingsWindow.isDestroyed()) {
-    settingsWindow.focus();
-    return;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.loadFile(path.join(__dirname, 'settings.html'));
   }
-  settingsWindow = new BrowserWindow({
-    width: 760,
-    height: 640,
-    minWidth: 600,
-    minHeight: 500,
-    parent: mainWindow || undefined,
-    modal: false,
-    resizable: true,
-    frame: true,
-    show: true,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
-    },
-    icon: path.join(__dirname, '../assets/icon.png'),
-  });
-  settingsWindow.loadFile(path.join(__dirname, 'settings.html'));
-  settingsWindow.on('closed', () => { settingsWindow = null; });
+}
+
+async function openApp() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const running = await dshBridge.isWebRunning();
+  if (running) {
+    mainWindow.loadURL(WEB_BASE);
+  } else {
+    // 服务未运行：留在设置页并提示先启动
+    mainWindow.loadFile(path.join(__dirname, 'settings.html'));
+    notify('DeepSeek Harness', '本地服务未运行，请先在设置页启动服务。');
+  }
 }
 
 // ===== 系统通知 =====
@@ -107,6 +104,36 @@ function notify(title, body) {
   } catch (e) { /* ignore */ }
 }
 
+// ===== 加载 first-party 扩展负载（启动时读一次） =====
+function loadCustomPayload() {
+  try {
+    customPayload.js = fs.readFileSync(CUSTOM_JS_PATH, 'utf8');
+    customPayload.css = fs.readFileSync(CUSTOM_CSS_PATH, 'utf8');
+  } catch (e) {
+    console.error('[inject] load custom payload failed:', e.message);
+  }
+}
+
+// ===== 把 first-party 扩展注入到 3080 dsh 页面 =====
+function injectExtras(win) {
+  if (!win || win.isDestroyed()) return;
+  const url = win.webContents.getURL();
+  // 只在 dsh 主页面注入（loading.html / settings.html 不注入）
+  if (!url.startsWith(WEB_BASE)) return;
+  try {
+    if (customPayload.css) {
+      win.webContents.insertCSS(customPayload.css).catch(() => {});
+    }
+    if (customPayload.js) {
+      win.webContents.executeJavaScript(customPayload.js, true).catch((e) => {
+        console.error('[inject] executeJavaScript failed:', e.message);
+      });
+    }
+  } catch (e) {
+    console.error('[inject] failed:', e.message);
+  }
+}
+
 // ===== 启动 dsh web 并加载网页端 =====
 async function startAndLoadWeb() {
   if (starting) return;
@@ -114,15 +141,15 @@ async function startAndLoadWeb() {
   try {
     const res = await dshBridge.startWeb();
     if (!res || !res.ok) {
+      // 启动失败：主窗口直接进入设置页，方便配置 dsh 路径 / 手动启动
+      lastStartError = (res && res.message) || '本地服务启动失败';
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.loadFile(path.join(__dirname, 'loading.html'));
-        setTimeout(() => {
-          try { mainWindow.webContents.send('app-error', (res && res.message) || '本地服务启动失败'); } catch (e) {}
-        }, 300);
+        mainWindow.loadFile(path.join(__dirname, 'settings.html'));
       }
-      notify('DeepSeek Harness', (res && res.message) || '本地服务启动失败');
+      notify('DeepSeek Harness', lastStartError);
       return;
     }
+    lastStartError = '';
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.loadURL(WEB_BASE);
     }
@@ -265,6 +292,10 @@ function registerAppHandlers() {
   ipcMain.handle('app-reload-page', async () => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(WEB_BASE);
   });
+  // 主窗口统一：设置页 ↔ 应用页切换
+  ipcMain.handle('app-open-app', async () => { openApp(); });
+  ipcMain.handle('app-open-settings', async () => { openSettings(); });
+  ipcMain.handle('app-get-start-error', async () => lastStartError);
 
   // ---- 注入模块触发的桌面动作 ----
   ipcMain.on('inject-toggle-top', () => applyAlwaysOnTop(!alwaysOnTop));
@@ -298,6 +329,9 @@ app.whenReady().then(async () => {
     if (typeof cfg.minimizeToTray === 'boolean') minimizeToTray = cfg.minimizeToTray;
     if (typeof cfg.alwaysOnTop === 'boolean') alwaysOnTop = cfg.alwaysOnTop;
   } catch {}
+
+  // 预读 first-party 注入负载（启动一次，注入时直接用）
+  loadCustomPayload();
 
   setupIPCHandlers(dshBridge);
   await createWindow();
