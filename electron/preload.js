@@ -58,18 +58,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
   },
 
-  // 通用 IPC（设置页等调用）
+  // 通用 IPC（设置页 / fork 前端里的 dsh-custom.js 调用）
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+  send: (channel, ...args) => ipcRenderer.send(channel, ...args),
+  on: (channel, cb) => {
+    const handler = (event, ...args) => cb(...args);
+    ipcRenderer.on(channel, handler);
+    return () => ipcRenderer.removeListener(channel, handler);
+  },
 });
 
-// ---- 注入：仅在 dsh 网页端（127.0.0.1:3080）运行 ----
-try {
-  const loc = (window.location && window.location.href) || '';
-  if (loc.indexOf('127.0.0.1:3080') !== -1) {
-    const inject = require('./inject.js');
-    // 等 DOM 就绪后再注入
-    const boot = () => { try { inject.setup({ ipcRenderer, fetch }); } catch (e) { console.error('[inject] setup failed', e); } };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-    else boot();
-  }
-} catch (e) { /* 注入失败不影响页面 */ }
