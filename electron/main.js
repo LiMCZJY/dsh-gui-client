@@ -265,6 +265,30 @@ function registerAppHandlers() {
   ipcMain.handle('app-reload-page', async () => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(WEB_BASE);
   });
+
+  // ---- 注入模块触发的桌面动作 ----
+  ipcMain.on('inject-toggle-top', () => applyAlwaysOnTop(!alwaysOnTop));
+  ipcMain.on('inject-open-settings', () => openSettings());
+  ipcMain.on('inject-open-datadir', () => { try { shell.openPath(process.env.DSH_HOME || path.join(os.homedir(), '.dsh')); } catch {} });
+  ipcMain.on('inject-hide-window', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide(); });
+  ipcMain.on('inject-notify-task-done', (_e, payload) => {
+    if (!payload) return;
+    try {
+      const n = new Notification({ title: payload.title || 'DeepSeek', body: payload.body || '' });
+      n.on('click', () => showMainWindow());
+      n.show();
+    } catch {}
+  });
+  ipcMain.handle('inject-get-css', async () => {
+    try { const cfg = await dshBridge.getGuiConfig(); return cfg.customCss || ''; } catch { return ''; }
+  });
+  // 设置页保存 CSS 后调用此主动推送更新到网页端
+  ipcMain.handle('inject-push-css', async (_e, css) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      try { mainWindow.webContents.send('inject-css-update', css); } catch {}
+    }
+    return true;
+  });
 }
 
 // ===== 应用入口 =====
