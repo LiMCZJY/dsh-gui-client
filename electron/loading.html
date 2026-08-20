@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeepSeek Harness</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #0d1117;
+        color: #e6edf3;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+      }
+      #app {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px;
+        text-align: center;
+      }
+      .logo {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: #e6edf3;
+      }
+      .logo span { color: #4493f8; }
+      .spinner {
+        width: 38px;
+        height: 38px;
+        border: 3px solid rgba(68, 147, 248, 0.25);
+        border-top-color: #4493f8;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      #status {
+        font-size: 14px;
+        color: #9da7b3;
+        max-width: 460px;
+        line-height: 1.6;
+      }
+      #errorBox {
+        display: none;
+        margin-top: 6px;
+        max-width: 520px;
+        background: rgba(248, 81, 73, 0.08);
+        border: 1px solid rgba(248, 81, 73, 0.4);
+        border-radius: 10px;
+        padding: 16px 18px;
+        text-align: left;
+      }
+      #errorBox h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+        color: #ff7b72;
+      }
+      #errorBox p {
+        margin: 6px 0;
+        font-size: 13px;
+        color: #c9d1d9;
+        line-height: 1.6;
+      }
+      #errorBox code {
+        background: rgba(110, 118, 129, 0.25);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      #pickPathBtn {
+        margin-top: 12px;
+        display: none;
+        background: #4493f8;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 16px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      #pickPathBtn:hover { background: #58a6ff; }
+      .hint { font-size: 12px; color: #6e7681; margin-top: 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="logo">DeepSeek <span>Harness</span></div>
+      <div class="spinner" id="spinner"></div>
+      <div id="status">正在准备本地服务…</div>
+
+      <div id="errorBox">
+        <h3>无法启动 DeepSeek Harness 本地服务</h3>
+        <p id="errorMsg"></p>
+        <p class="hint">
+          请确认本机已安装 <code>@deepseek-ai/dsh</code>（可通过
+          <code>npm i -g @deepseek-ai/dsh</code> 安装），或手动指定其安装目录。
+        </p>
+        <button id="pickPathBtn">选择 dsh 安装目录</button>
+      </div>
+    </div>
+
+    <script>
+      // 仅本启动页使用 electronAPI；官方 web 端会忽略它
+      (function () {
+        const statusEl = document.getElementById('status');
+        const spinner = document.getElementById('spinner');
+        const errorBox = document.getElementById('errorBox');
+        const errorMsg = document.getElementById('errorMsg');
+        const pickPathBtn = document.getElementById('pickPathBtn');
+
+        window.__setStatus = function (text) {
+          if (statusEl) statusEl.textContent = text;
+        };
+        window.__showError = function (msg) {
+          if (spinner) spinner.style.display = 'none';
+          if (statusEl) statusEl.style.display = 'none';
+          if (errorBox) errorBox.style.display = 'block';
+          if (errorMsg) errorMsg.textContent = msg || '未知错误';
+          if (pickPathBtn) pickPathBtn.style.display = 'inline-block';
+        };
+
+        // 监听主进程发来的错误信息（服务启动失败时）
+        if (window.electronAPI && window.electronAPI.app && window.electronAPI.app.onError) {
+          window.electronAPI.app.onError(function (msg) {
+            window.__showError(msg);
+          });
+        }
+
+        if (pickPathBtn && window.electronAPI && window.electronAPI.system) {
+          pickPathBtn.addEventListener('click', async function () {
+            try {
+              const dir = await window.electronAPI.system.selectFolder({
+                title: '选择 dsh 安装目录（包含 lib/bin.js 的文件夹）',
+              });
+              if (!dir) return;
+              if (window.electronAPI.dsh && window.electronAPI.dsh.setPath) {
+                await window.electronAPI.dsh.setPath(dir);
+              }
+              if (window.electronAPI.dsh && window.electronAPI.dsh.retryWeb) {
+                window.electronAPI.dsh.retryWeb();
+              }
+            } catch (e) {
+              window.__showError('选择目录失败：' + (e && e.message ? e.message : e));
+            }
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>设置 - DeepSeek Harness GUI</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f3f3;
+      --card: #ffffff;
+      --border: #e2e2e2;
+      --text: #1f1f1f;
+      --text-2: #666;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --green: #16a34a;
+      --red: #dc2626;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 28px 24px 40px; }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .sub { color: var(--text-2); margin-bottom: 24px; font-size: 12.5px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px 20px; margin-bottom: 16px; box-shadow: var(--shadow);
+    }
+    .card h2 { font-size: 14px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .card h2 .ico { font-size: 15px; }
+    .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .row:last-child { margin-bottom: 0; }
+    label.field { flex: 0 0 96px; color: var(--text-2); font-size: 12.5px; }
+    input[type="text"] {
+      flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 13px; font-family: inherit; background: #fff; color: var(--text);
+    }
+    input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    button {
+      padding: 7px 14px; border: 1px solid var(--border); border-radius: 6px; background: #fff;
+      color: var(--text); font-size: 12.5px; cursor: pointer; font-family: inherit;
+      transition: background 0.12s, border-color 0.12s; white-space: nowrap;
+    }
+    button:hover { background: #f5f5f5; }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button.primary:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .dot.on { background: var(--green); box-shadow: 0 0 0 3px rgba(22,163,74,0.15); }
+    .dot.off { background: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid #f0f0f0;
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-row .desc { font-size: 11.5px; color: var(--text-2); margin-top: 2px; }
+    .switch { position: relative; width: 40px; height: 22px; flex: 0 0 40px; cursor: pointer; }
+    .switch input { display: none; }
+    .switch .track { position: absolute; inset: 0; background: #cfcfcf; border-radius: 22px; transition: background 0.18s; }
+    .switch .thumb {
+      position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; transition: transform 0.18s; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .switch input:checked + .track { background: var(--accent); }
+    .switch input:checked + .track + .thumb { transform: translateX(18px); }
+    .msg { margin-top: 10px; font-size: 12px; padding: 8px 10px; border-radius: 6px; display: none; }
+    .msg.ok { display: block; background: rgba(22,163,74,0.1); color: var(--green); }
+    .msg.err { display: block; background: rgba(220,38,38,0.08); color: var(--red); }
+    .msg.info { display: block; background: rgba(37,99,235,0.08); color: var(--accent); }
+    .footer { margin-top: 8px; display: flex; justify-content: flex-end; gap: 10px; }
+    .hint { font-size: 11.5px; color: var(--text-2); margin-top: 6px; line-height: 1.5; }
+    code { background: #eef1f5; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>设置</h1>
+    <div class="sub">DeepSeek Harness GUI · 桌面客户端配置</div>
+
+    <div class="card">
+      <h2><span class="ico">📁</span> DSH 安装路径</h2>
+      <div class="row">
+        <label class="field">安装路径</label>
+        <input type="text" id="dshPath" placeholder="例如：C:\...\node_modules\@deepseek-ai\dsh" />
+        <button id="browseBtn">浏览…</button>
+        <button id="detectBtn">重新检测</button>
+      </div>
+      <div class="hint">客户端会优先从常见位置自动查找 <code>@deepseek-ai/dsh</code>；若自动探测失败，可手动指定包含 <code>lib/bin.js</code> 的目录。</div>
+      <div class="msg" id="pathMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ico">🚀</span> 本地服务 (dsh web)</h2>
+      <div class="row">
+        <label class="field">运行状态</label>
+        <span class="status"><span class="dot off" id="svcDot"></span><span id="svcText">检测中…</span></span>
+        <button id="refreshBtn" style="margin-left:auto;">刷新状态</button>
+      </div>
+      <div class="row">
+        <button class="primary" id="startBtn">启动服务</button>
+        <button id="stopBtn">停止服务</button>
+        <button id="restartBtn">重启服务</button>
+        <span class="hint" style="margin:0;">服务地址：<code>http://127.0.0.1:3080</code></span>
+      </div>
+      <div class="msg" id="svcMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ico">⚙️</span> 行为偏好</h2>
+      <div class="toggle-row">
+        <div>
+          <div>关闭时最小化到托盘</div>
+          <div class="desc">关闭窗口不退出，后台保持运行（托盘可恢复）</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="minToTray" /><span class="track"></span><span class="thumb"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div>窗口始终置顶</div>
+          <div class="desc">让客户端始终显示在最前面</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="alwaysTop" /><span class="track"></span><span class="thumb"></span></label>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button id="closeBtn">关闭</button>
+      <button class="primary" id="saveBtn">保存设置</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const api = window.electronAPI || {};
+      const $ = (id) => document.getElementById(id);
+      const dshPathEl = $('dshPath');
+      const pathMsg = $('pathMsg');
+      const svcDot = $('svcDot');
+      const svcText = $('svcText');
+      const svcMsg = $('svcMsg');
+      const minToTray = $('minToTray');
+      const alwaysTop = $('alwaysTop');
+
+      function showMsg(el, text, type) { el.textContent = text; el.className = 'msg ' + type; }
+      function invoke(channel, ...args) { return api.invoke ? api.invoke(channel, ...args) : Promise.reject(new Error('no invoke')); }
+
+      async function init() {
+        try {
+          const cfg = api.gui && api.gui.getConfig ? await api.gui.getConfig() : {};
+          if (cfg.dshPath) dshPathEl.value = cfg.dshPath;
+          if (typeof cfg.minimizeToTray === 'boolean') minToTray.checked = cfg.minimizeToTray;
+          if (typeof cfg.alwaysOnTop === 'boolean') alwaysTop.checked = cfg.alwaysOnTop;
+        } catch (e) {}
+        refreshStatus();
+      }
+
+      async function refreshStatus() {
+        svcText.textContent = '检测中…'; svcDot.className = 'dot off';
+        try {
+          const status = await invoke('dsh-web-status');
+          const running = status && status.running;
+          svcDot.className = 'dot ' + (running ? 'on' : 'off');
+          svcText.textContent = running ? '运行中' : '未运行';
+        } catch (e) { svcText.textContent = '检测失败'; }
+      }
+
+      $('browseBtn').addEventListener('click', async () => {
+        try {
+          const dir = await api.system.selectFolder({ title: '选择 @deepseek-ai/dsh 安装目录' });
+          if (dir) { dshPathEl.value = dir; showMsg(pathMsg, '已选择路径，点击「保存设置」生效。', 'info'); }
+        } catch (e) { showMsg(pathMsg, '选择失败：' + e.message, 'err'); }
+      });
+
+      $('detectBtn').addEventListener('click', async () => {
+        showMsg(pathMsg, '正在检测…', 'info');
+        try {
+          const res = await invoke('dsh-find-path');
+          if (res && res.path) { dshPathEl.value = res.path; showMsg(pathMsg, '已自动检测到：' + res.path, 'ok'); }
+          else showMsg(pathMsg, '未找到 DSH，请手动指定目录。', 'err');
+        } catch (e) { showMsg(pathMsg, '检测失败：' + e.message, 'err'); }
+      });
+
+      $('startBtn').addEventListener('click', async () => {
+        showMsg(svcMsg, '正在启动服务…', 'info');
+        try {
+          const res = await invoke('dsh-start-web');
+          if (res && res.ok) showMsg(svcMsg, res.alreadyRunning ? '服务已在运行。' : '服务启动成功。', 'ok');
+          else showMsg(svcMsg, (res && res.message) || '启动失败。', 'err');
+        } catch (e) { showMsg(svcMsg, '启动失败：' + e.message, 'err'); }
+        refreshStatus();
+      });
+      $('stopBtn').addEventListener('click', async () => {
+        try { await invoke('dsh-stop-web'); showMsg(svcMsg, '已发送停止指令。', 'ok'); }
+        catch (e) { showMsg(svcMsg, '停止失败：' + e.message, 'err'); }
+        refreshStatus();
+      });
+      $('restartBtn').addEventListener('click', async () => {
+        showMsg(svcMsg, '正在重启服务…', 'info');
+        try {
+          const res = await invoke('dsh-restart-web');
+          if (res && res.ok) showMsg(svcMsg, '服务重启成功。', 'ok');
+          else showMsg(svcMsg, (res && res.message) || '重启失败。', 'err');
+        } catch (e) { showMsg(svcMsg, '重启失败：' + e.message, 'err'); }
+        refreshStatus();
+      });
+      $('refreshBtn').addEventListener('click', refreshStatus);
+
+      $('saveBtn').addEventListener('click', async () => {
+        try {
+          const partial = { minimizeToTray: minToTray.checked, alwaysOnTop: alwaysTop.checked };
+          if (dshPathEl.value.trim() && api.dsh && api.dsh.setPath) await api.dsh.setPath(dshPathEl.value.trim());
+          if (api.gui && api.gui.setConfig) await api.gui.setConfig(partial);
+          showMsg(pathMsg, '设置已保存。', 'ok');
+        } catch (e) { showMsg(pathMsg, '保存失败：' + e.message, 'err'); }
+      });
+
+      $('closeBtn').addEventListener('click', () => window.close());
+      init();
+    })();
+  </script>
+</body>
+</html>
