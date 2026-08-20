@@ -131,6 +131,16 @@
       </div>
     </div>
 
+    <div class="card">
+      <h2><span class="ico">🎨</span> 自定义 CSS 注入</h2>
+      <div class="row" style="align-items:flex-start;">
+        <label class="field">自定义样式</label>
+        <textarea id="customCss" rows="6" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:Consolas,'Courier New',monospace;background:#1f2937;color:#e5e7eb;resize:vertical;" placeholder="/* 例如让对话区字号变大 */&#10;.conversation-content { font-size: 15px; }&#10;&#10;body { background: #0d1117; }"></textarea>
+      </div>
+      <div class="hint">写入的 CSS 会实时注入到 dsh 网页端，刷新后仍生效。留空则恢复官方默认样式。</div>
+      <div class="msg" id="cssMsg"></div>
+    </div>
+
     <div class="footer">
       <button id="closeBtn">关闭</button>
       <button class="primary" id="saveBtn">保存设置</button>
@@ -148,6 +158,7 @@
       const svcMsg = $('svcMsg');
       const minToTray = $('minToTray');
       const alwaysTop = $('alwaysTop');
+      const customCss = $('customCss');
 
       function showMsg(el, text, type) { el.textContent = text; el.className = 'msg ' + type; }
       function invoke(channel, ...args) { return api.invoke ? api.invoke(channel, ...args) : Promise.reject(new Error('no invoke')); }
@@ -158,6 +169,7 @@
           if (cfg.dshPath) dshPathEl.value = cfg.dshPath;
           if (typeof cfg.minimizeToTray === 'boolean') minToTray.checked = cfg.minimizeToTray;
           if (typeof cfg.alwaysOnTop === 'boolean') alwaysTop.checked = cfg.alwaysOnTop;
+          if (typeof cfg.customCss === 'string') customCss.value = cfg.customCss;
         } catch (e) {}
         refreshStatus();
       }
@@ -215,9 +227,11 @@
 
       $('saveBtn').addEventListener('click', async () => {
         try {
-          const partial = { minimizeToTray: minToTray.checked, alwaysOnTop: alwaysTop.checked };
+          const partial = { minimizeToTray: minToTray.checked, alwaysOnTop: alwaysTop.checked, customCss: customCss.value };
           if (dshPathEl.value.trim() && api.dsh && api.dsh.setPath) await api.dsh.setPath(dshPathEl.value.trim());
           if (api.gui && api.gui.setConfig) await api.gui.setConfig(partial);
+          // 实时把 CSS 推送到网页端
+          try { await invoke('inject-push-css', customCss.value); } catch {}
           showMsg(pathMsg, '设置已保存。', 'ok');
         } catch (e) { showMsg(pathMsg, '保存失败：' + e.message, 'err'); }
       });
